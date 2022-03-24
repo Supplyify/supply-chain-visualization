@@ -20,16 +20,16 @@ df.drop(columns=[
     'State',
     'CustomerAddress',
     'PostalCode',
-], inplace=True)
+], inplace=True, errors='ignore')
+
 
 # helper function to generate locations
 def generate_locations():
     locations = real_random_address()
     # remove unnecessary values
     locations.pop('coordinates', None)
-    locations.pop('address2', None)
     # join the address into string
-    return ' '.join(map(str, locations.values()))
+    return ' '.join([v for v in locations.values() if v])
 
 
 # generate random addresses for the supplier and customer

@@ -32,15 +32,21 @@ def geocode(address_or_zipcode):
     return lat, lng
 
 
-df = pd.read_csv('supply-chain-data.csv')
+df = pd.merge(
+    pd.read_csv('facility-data.csv'),
+    pd.read_csv('hub-data.csv'),
+    left_on='FACILITY UNIQUE ID',
+    right_on='HUB UNIQUE ID',
+    how='inner'
+)
 
 features = list()
 
 for index, row in df.iterrows():
     print(index)
     try:
-        start = geocode(row['CustomerAddress'])
-        end = geocode(row['SupplierAddress'])
+        start = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
+        end = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
         features.append(gmaps.Line(
             start=start,
             end=end,
@@ -48,6 +54,8 @@ for index, row in df.iterrows():
         ))
         features.append(gmaps.Marker(start))
         features.append(gmaps.Marker(end))
+    except KeyboardInterrupt:
+        break
     except:
         continue
 

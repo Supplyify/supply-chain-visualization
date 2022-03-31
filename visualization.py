@@ -2,12 +2,15 @@ from ipywidgets.embed import embed_minimal_html
 import gmaps
 import requests
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from dotenv import load_dotenv
+import os
 
-GOOGLE_API_KEY = 'AIzaSyCwBUDe6L9azdW7Gomzv-eEpz_c_OSe0sY'
+load_dotenv()
 
-gmaps.configure(api_key=GOOGLE_API_KEY)
-
-fig = gmaps.figure()
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+MAPBOX_ACCESS_TOKEN = os.getenv('MAPBOX_ACCESS_TOKEN')
 
 
 def geocode(address_or_zipcode):
@@ -40,25 +43,38 @@ df = pd.merge(
     how='inner'
 )
 
-features = list()
+fig = go.Figure()
 
 for index, row in df.iterrows():
     print(index)
     try:
         start = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
         end = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
-        features.append(gmaps.Line(
-            start=start,
-            end=end,
-            stroke_weight=3.0
-        ))
-        features.append(gmaps.Marker(start))
-        features.append(gmaps.Marker(end))
+
+        fig.add_trace(
+            go.Scattergeo(
+                locationmode='USA-states',
+                lon=[start[1], end[1]],
+                lat=[start[0], end[0]],
+                mode='lines',
+                line=dict(width=1, color='red'),
+            )
+        )
     except KeyboardInterrupt:
         break
     except:
         continue
 
-drawing = gmaps.drawing_layer(features=features)
-fig.add_layer(drawing)
-embed_minimal_html('export.html', views=[fig])
+fig.update_layout(
+    title_text='COVID Supply Chain Visualization',
+    showlegend=False,
+    geo=dict(
+        scope='north america',
+        projection_type='azimuthal equal area',
+        showland=True,
+        landcolor='rgb(243, 243, 243)',
+        countrycolor='rgb(204, 204, 204)',
+    ),
+)
+
+fig.write_html("./export.html")

@@ -10,3 +10,9 @@ python3 generate-data.py <num_facilities> <num_tests>
 # create export.html for visualization
 python3 visualization.py
 ```
+
+```
+// .env
+MAPBOX_ACCESS_TOKEN=
+GOOGLE_API_KEY=
+```

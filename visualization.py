@@ -1,8 +1,5 @@
-from ipywidgets.embed import embed_minimal_html
-import gmaps
 import requests
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 from dotenv import load_dotenv
 import os
@@ -53,8 +50,8 @@ for index, row in df.iterrows():
         facility = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
         hub = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
 
-        df.loc[index,'FACILITY LAT'], df.loc[index,'FACILITY LNG'] = facility
-        df.loc[index,'HUB LAT'], df.loc[index,'HUB LNG'] = hub
+        df.loc[index, 'FACILITY LAT'], df.loc[index, 'FACILITY LNG'] = facility
+        df.loc[index, 'HUB LAT'], df.loc[index, 'HUB LNG'] = hub
 
         fig.add_trace(go.Scattergeo(
             locationmode='USA-states',

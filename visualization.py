@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from dotenv import load_dotenv
 import os
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -42,60 +43,74 @@ df = pd.merge(
 
 print(df.head())
 
+tqdm.pandas()
+
 fig = go.Figure()
 
-for index, row in df.iterrows():
-    print(index)
+for index, row in tqdm(df.iterrows(), desc='Generating Map', total=df.shape[0]):
     try:
-        facility = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
-        hub = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
+        for place in ['FACILITY', 'HUB']:
+            df.loc[index, f'{place} COMPLETE ADDRESS'] = ' '.join(map(str, [
+                row[f'{place} ADDRESS'],
+                row[f'{place} STATE'],
+                row[f'{place} ZIPCODE'],
+            ]))
+
+        facility = geocode(df.loc[index, 'FACILITY COMPLETE ADDRESS'])
+        hub = geocode(df.loc[index, 'HUB COMPLETE ADDRESS'])
 
         df.loc[index, 'FACILITY LAT'], df.loc[index, 'FACILITY LNG'] = facility
         df.loc[index, 'HUB LAT'], df.loc[index, 'HUB LNG'] = hub
 
-        fig.add_trace(go.Scattergeo(
-            locationmode='USA-states',
-            lon=[facility[1], hub[1]],
-            lat=[facility[0], hub[0]],
+        fig.add_trace(go.Scattermapbox(
+            lon=[hub[1], facility[1]],
+            lat=[hub[0], facility[0]],
             mode='lines',
+            text=f"From Hub {row['HUB UNIQUE ID']} to Facility {row['FACILITY UNIQUE ID']}",
             line=dict(
                 width=1,
-                 color='red'
+                color='red',
             ),
         ))
     except KeyboardInterrupt:
         break
-    except:
-        continue
 
-fig.add_trace(go.Scattergeo(
-    locationmode='USA-states',
-    lon=df['FACILITY LNG'],
-    lat=df['FACILITY LAT'],
-    hoverinfo='text',
-    text=df['FACILITY ADDRESS'],
+
+fig.add_trace(go.Scattermapbox(
+    lon=df['HUB LNG'],
+    lat=df['HUB LAT'],
+    name=f"{df['HUB UNIQUE ID']}",
+    text=df['HUB COMPLETE ADDRESS'],
     mode='markers',
     marker=dict(
-        size=2,
+        size=5,
         color='rgb(255, 0, 0)',
-        line=dict(
-            width=3,
-            color='rgba(68, 68, 68, 0)'
-        )
     )
 ))
 
+fig.add_trace(go.Scattermapbox(
+    lon=df['FACILITY LNG'],
+    lat=df['FACILITY LAT'],
+    text=df['FACILITY COMPLETE ADDRESS'],
+    mode='markers',
+    marker=dict(
+        size=5,
+        color='rgb(0, 255, 0)',
+    )
+))
 
 fig.update_layout(
     title_text='COVID Supply Chain Visualization',
     showlegend=False,
-    geo=dict(
-        scope='north america',
-        projection_type='azimuthal equal area',
-        showland=True,
-        landcolor='rgb(243, 243, 243)',
-        countrycolor='rgb(204, 204, 204)',
-    ),
+    autosize=True,
+    hovermode='closest',
+    mapbox={
+        'style': 'light',
+        'zoom': 1,
+        'accesstoken': MAPBOX_ACCESS_TOKEN,
+    }
 )
+
+fig.show()
 
 fig.write_html("./export.html")

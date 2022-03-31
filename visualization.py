@@ -43,27 +43,51 @@ df = pd.merge(
     how='inner'
 )
 
+print(df.head())
+
 fig = go.Figure()
 
 for index, row in df.iterrows():
     print(index)
     try:
-        start = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
-        end = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
+        facility = geocode(f"{row['FACILITY ADDRESS']} {row['FACILITY STATE']} {row['FACILITY ZIPCODE']}")
+        hub = geocode(f"{row['HUB ADDRESS']} {row['HUB STATE']} {row['HUB ZIPCODE']}")
 
-        fig.add_trace(
-            go.Scattergeo(
-                locationmode='USA-states',
-                lon=[start[1], end[1]],
-                lat=[start[0], end[0]],
-                mode='lines',
-                line=dict(width=1, color='red'),
-            )
-        )
+        df.loc[index,'FACILITY LAT'], df.loc[index,'FACILITY LNG'] = facility
+        df.loc[index,'HUB LAT'], df.loc[index,'HUB LNG'] = hub
+
+        fig.add_trace(go.Scattergeo(
+            locationmode='USA-states',
+            lon=[facility[1], hub[1]],
+            lat=[facility[0], hub[0]],
+            mode='lines',
+            line=dict(
+                width=1,
+                 color='red'
+            ),
+        ))
     except KeyboardInterrupt:
         break
     except:
         continue
+
+fig.add_trace(go.Scattergeo(
+    locationmode='USA-states',
+    lon=df['FACILITY LNG'],
+    lat=df['FACILITY LAT'],
+    hoverinfo='text',
+    text=df['FACILITY ADDRESS'],
+    mode='markers',
+    marker=dict(
+        size=2,
+        color='rgb(255, 0, 0)',
+        line=dict(
+            width=3,
+            color='rgba(68, 68, 68, 0)'
+        )
+    )
+))
+
 
 fig.update_layout(
     title_text='COVID Supply Chain Visualization',

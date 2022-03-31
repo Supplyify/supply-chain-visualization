@@ -105,8 +105,12 @@ fig.update_layout(
     autosize=True,
     hovermode='closest',
     mapbox={
+        'center': {
+            'lat': 37.0902,
+            'lon': -95.7129,
+        },
         'style': 'light',
-        'zoom': 1,
+        'zoom': 4,
         'accesstoken': MAPBOX_ACCESS_TOKEN,
     }
 )

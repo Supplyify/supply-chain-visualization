@@ -1,3 +1,4 @@
+from dis import show_code
 import requests
 import pandas as pd
 import plotly.graph_objects as go
@@ -34,14 +35,12 @@ def geocode(address_or_zipcode):
 
 
 df = pd.merge(
-    pd.read_csv('facility-data.csv'),
     pd.read_csv('hub-data.csv'),
-    left_on='FACILITY UNIQUE ID',
-    right_on='HUB UNIQUE ID',
+    pd.read_csv('facility-data.csv'),
+    left_on='HUB UNIQUE ID',
+    right_on='FACILITY HUB',
     how='inner'
 )
-
-print(df.head())
 
 tqdm.pandas()
 
@@ -62,46 +61,86 @@ for index, row in tqdm(df.iterrows(), desc='Generating Map', total=df.shape[0]):
         df.loc[index, 'FACILITY LAT'], df.loc[index, 'FACILITY LNG'] = facility
         df.loc[index, 'HUB LAT'], df.loc[index, 'HUB LNG'] = hub
 
+        scale = row['CURRENT TEST SURPLUS'] / row['NUMBER OF TESTS PRODUCED']
+
         fig.add_trace(go.Scattermapbox(
             lon=[hub[1], facility[1]],
             lat=[hub[0], facility[0]],
             mode='lines',
-            text=f"From Hub {row['HUB UNIQUE ID']} to Facility {row['FACILITY UNIQUE ID']}",
+            legendgroup='PATHS',
+            legendgrouptitle={
+                'text': 'PATHS',
+            },
             line=dict(
                 width=1,
-                color='red',
+                color=f'rgb({-255 * scale + 255}, {255 * scale}, 0)',
             ),
         ))
     except KeyboardInterrupt:
         break
 
-
 fig.add_trace(go.Scattermapbox(
     lon=df['HUB LNG'],
     lat=df['HUB LAT'],
-    name=f"{df['HUB UNIQUE ID']}",
-    text=df['HUB COMPLETE ADDRESS'],
+    customdata=df[[
+        'HUB COMPLETE ADDRESS',
+        'HUB UNIQUE ID',
+        'NUMBER OF TESTS PRODUCED',
+        'NUMBER OF TESTS DISTRIBUTED',
+        'CURRENT TEST SURPLUS'
+    ]],
+    legendrank=0,
+    hovertemplate='<b>%{customdata[0]}</b><br>' +
+    'HUB UNIQUE ID: %{customdata[1]}<br>'
+    'TESTS PRODUCED: %{customdata[2]}<br>' +
+    'TESTS DISTRIBUTED: %{customdata[3]}<br>' +
+    'TESTS SURPLUS: %{customdata[4]}',
     mode='markers',
+    name='HUBS',
     marker=dict(
-        size=5,
-        color='rgb(255, 0, 0)',
+        sizemin=5,
+        sizeref=1,
+        sizemode='area',
+        size=df['CURRENT TEST SURPLUS'],
+        color=df['NUMBER OF TESTS DISTRIBUTED'] / df['NUMBER OF TESTS PRODUCED'],
+        colorscale=[[0, 'rgba(255,0,0,255)'], [1, 'rgba(0,255,0,255)']],
+        opacity=0.7
     )
 ))
 
 fig.add_trace(go.Scattermapbox(
     lon=df['FACILITY LNG'],
     lat=df['FACILITY LAT'],
-    text=df['FACILITY COMPLETE ADDRESS'],
     mode='markers',
+    name='FACILITIES',
+    customdata=df[[
+        'FACILITY COMPLETE ADDRESS',
+        'FACILITY UNIQUE ID',
+        'FACILITY HUB',
+        'NUMBER OF TESTS',
+        'NUMBER POSITIVE',
+        'NUMBER NEGATIVE',
+    ]],
+    legendrank=0,
+    hovertemplate='<b>%{customdata[0]}</b><br>' +
+    'FACILITY UNIQUE ID: %{customdata[1]}<br>'
+    'FACILITY HUB: %{customdata[2]}<br>' +
+    'NUMBER OF TESTS: %{customdata[3]}<br>' +
+    'NUMBER POSITIVE: %{customdata[4]}<br>' +
+    'NUMBER NEGATIVE: %{customdata[5]}',
     marker=dict(
-        size=5,
-        color='rgb(0, 255, 0)',
+        sizemin=5,
+        sizeref=1,
+        sizemode='area',
+        size=df['NUMBER OF TESTS'],
+        color=df['NUMBER NEGATIVE'] / df['NUMBER OF TESTS'],
+        colorscale=[[0, 'rgba(0,0,255,255)'], [1, 'rgba(255,255,0,255)']],
     )
 ))
 
 fig.update_layout(
     title_text='COVID Supply Chain Visualization',
-    showlegend=False,
+    showlegend=True,
     autosize=True,
     hovermode='closest',
     mapbox={
